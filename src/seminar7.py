@@ -21,7 +21,7 @@ from urllib.request import urlretrieve
 import boto3
 import dotenv
 import logging
-#####
+######
 MAX_WORDS = 4000
 MAX_SEQ_LEN = 150
 DATA_URL_TRAIN = 'https://storage.yandexcloud.net/fa-bucket/spam.csv'
