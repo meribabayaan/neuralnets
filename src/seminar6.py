@@ -1,26 +1,22 @@
 """Seminar 6. Image Binary Classification with Keras. ML ops."""
-
 import argparse
 import os
 import zipfile
 import shutil
 from urllib.request import urlretrieve
-
-import tensorflow as tf
-import boto3
-import dotenv
-
 from tensorflow import keras
 from tensorflow.keras import layers
-###
+import tensorflow as tf
+import boto3 # для S3
+import dotenv
+
+GOOGLE_COLAB_LINK = "https://colab.research.google.com/drive/1b4-VaznVIqjgIhjMNZFpupBgPbKMiRGn#scrollTo=uXp-HdR3Xewe"
 DATA_URL = 'https://storage.yandexcloud.net/fa-bucket/cats_dogs_train.zip'
 PATH_TO_DATA_ZIP = 'data/raw/cats_dogs_train.zip'
 PATH_TO_DATA = 'data/raw/cats_dogs_train'
 PATH_TO_MODEL = 'models/model_6'
 BUCKET_NAME = 'neuralnets2023'
-# todo fix your git user name and copy ..env to project root
 YOUR_GIT_USER = 'meribabayaan'
-
 image_size = (180, 180)
 batch_size = 64
 
@@ -40,7 +36,7 @@ def download_data():
         print('Data is already extracted!')
 
 
-def get_data(augmentation=True):
+def filter_and_augment_data():
     num_skipped = 0
     path_to_images = os.path.join(PATH_TO_DATA, "PetImages")
     for folder_name in ("Cat", "Dog"):
@@ -69,23 +65,23 @@ def get_data(augmentation=True):
         batch_size=batch_size,
     )
 
-    if augmentation:
-        data_augmentation = keras.Sequential(
-            [
-                layers.RandomFlip("horizontal"),
-                layers.RandomRotation(0.1),
-            ]
-        )
-        train_ds = train_ds.map(
-            lambda img, label: (data_augmentation(img), label),
-            num_parallel_calls=tf.data.AUTOTUNE,
-        )
+    data_augmentation = keras.Sequential(
+        [
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.1),
+        ]
+    )
+    train_ds = train_ds.map(
+        lambda img, label: (data_augmentation(img), label),
+        num_parallel_calls=tf.data.AUTOTUNE,
+    )
 
     # Prefetching samples in GPU memory helps maximize GPU utilization.
     train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
     val_ds = val_ds.prefetch(tf.data.AUTOTUNE)
 
     return train_ds, val_ds
+
 
 def make_model(input_shape, num_classes):
     inputs = keras.Input(shape=input_shape)
@@ -134,13 +130,10 @@ def make_model(input_shape, num_classes):
 
 def train():
     """Pipeline: Build, train and save model to models/model_6"""
-    # Todo: Copy some code from seminar5 and https://keras.io/examples/vision/image_classification_from_scratch/
     print('Training model')
-
-    train_ds, val_ds = get_data(augmentation=True)
-
+    train_ds, val_ds = filter_and_augment_data()
     model = make_model(input_shape=[*image_size, 3], num_classes=2)
-    epochs = 6
+    epochs = 7
 
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint("save_at_{epoch}.keras"),
@@ -167,7 +160,7 @@ def upload():
                         format='zip',
                         root_dir=PATH_TO_MODEL)
 
-    config = dotenv.dotenv_values('..env')
+    config = dotenv.dotenv_values("env")
 
     ACCESS_KEY = config['ACCESS_KEY']
     SECRET_KEY = config['SECRET_KEY']
